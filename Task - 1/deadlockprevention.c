@@ -62,8 +62,8 @@ int main(){
             
             // &flights[i] -> address where the thread id will be stored
             // NULL -> no specific features
-            // airplane_landing ->  the function the thread will be running (In this case, the task is for airplane
-            // to be landing on the runway)
+            // safe_path ->  the function the thread will be running (In this case, the task is for 
+            // sequential execution of waiting for runway, then taxiway
             // &flight_ids[i] -> argument passed to 'safe_path' so as to track down the plane 
 
             pthread_create(&flights[i],NULL,safe_path,&flight_ids[i]);
