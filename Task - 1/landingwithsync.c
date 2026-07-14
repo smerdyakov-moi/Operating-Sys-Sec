@@ -5,9 +5,6 @@
 #include <sys/wait.h> // Necessary library for wait() {specifically used for parent process to wait for 
                         // the termination of its child process}
 
-
-bool runway_occupied = false; // shared state         
-
 pthread_mutex_t runway_lock; // declaring global binary lock structure. Essential in preventing race condition by
                         // allowing only one airplane/thread to run in its own critical section
 
@@ -25,24 +22,14 @@ void *airplane_landing(void *arg){
     pthread_mutex_lock(&runway_lock);
 
     // Beginning of Critical Section
-    printf("||CHILD PROCESS|| Lock acquired. Checking whether runway's occupied or not... \n");
+    // When the thread has passsed the line above, it's guaranteed *exclusive* (meaning only it can access the runway) accesss to 
+    // the runway.
+    printf("||CHILD PROCESS|| Lock acquired by Flight %d. Initiating Landing... \n", flight_id);
 
-    if (!runway_occupied){
- 
-        printf("||CHILD PROCESS|| Flight %d reads runway clear. Landing...\n",flight_id);
+    // Simulating time taken it is still in the runway before being cleared out.
+    sleep(3);
 
-        runway_occupied = true;
-        
-        // Simulating time taken it is still in the runway before being cleared out.
-        sleep(3);
-
-        runway_occupied = false; // Meaning the plane has successfully left the runway after landing on it.
-        printf("||Child Process|| FLight %d successfully completed its landing sequence. \n", flight_id);
-    
-    }else{
-      
-        printf("||CHILD PROCESS|| Runway Occupied. Flight %d on halt flying around",flight_id);
-    }
+    printf("||Child Process|| FLight %d successfully completed its landing sequence. \n", flight_id);
 
     // Critical Section End
     // Release the acquired lock by the airplane so the other airplanes can successfully complete their landing sequence.
