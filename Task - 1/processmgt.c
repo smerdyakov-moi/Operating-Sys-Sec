@@ -6,10 +6,13 @@
                         // the termination of its child process}
 
 
+bool runway_occupied = false; // shared state                        
+
+// Helper function (Thread logic) for plane landing without synchronization (MUTEX)                    
 void *airplane_landing(void *arg){
-    sleep(3);
-    printf("Successfully terminating..\n");
-    return NULL;
+    
+    int flight_id = *((int*)arg); // extracting the flight id of the current thread/airplane
+
 }
 
 int main(){
@@ -48,10 +51,14 @@ int main(){
         return 0; // Termination of the child process
     }
     else if (pid >0){ // PID > 0 denotes parent process
-        wait(NULL);
+
+        wait(NULL); //makes the parent process wait for the termination of child process
         printf("||PARENT PROCESS|| Terminated.");
+    
     }else{ // PID <0 indicates that there was some issue/error with creating the child process
+    
         printf("Fork failed its execution!");
+    
     }
 
     return 0;
