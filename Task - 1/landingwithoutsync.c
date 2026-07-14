@@ -13,17 +13,40 @@ void *airplane_landing(void *arg){
     
     int flight_id = *((int*)arg); // extracting the flight id of the current thread/airplane
 
+    printf("||CHILD PROCESS|| Flight %d nearing runway. Reading runway_occupied = %d... \n",flight_id,runway_occupied);
+
+    if (!runway_occupied){
+        printf("||CHILD PROCESS|| Flight %d reads runway clear. Landing...\n",flight_id);
+
+        // To simulate a race condition here, I run a sleep() meaning the CPU will switch its context to another
+        // thread. The other thread still reads the runway_occupied as false, causing a collision.
+
+        sleep(3); // Simulates 3 seconds of idle time
+
+        runway_occupied = true;
+        printf("Collision!! Flight %d collided on an active runway! \n",flight_id);
+
+        sleep(2); // Simulating actively landing on the airway and then leaving the runway 
+
+        runway_occupied = false; // Meaning the plane has successfully left the runway after landing on it.
+
+    }else{
+        printf("||CHILD PROCESS|| Runway Occupied. Flight %d on halt flying around",flight_id);
+    }
+
+    return NULL;
+
 }
 
 int main(){
 
-    printf("||Parent Process||");
+    printf("||Parent Process||\n");
 
     // fork() clones existing process (parent process) inside where I will be running my concurrent threads.
     pid_t pid = fork(); 
 
     if(pid == 0){ // Successfull process creation. PID of 0 denotes the child process
-        printf("||Child Process|| Launching airplanes [threads]....");
+        printf("||Child Process|| Launching airplanes [threads].... \n");
 
         pthread_t flights[3]; // Creates three distinct thread objects (airplanes) in memory, with each
                                 // of the three threads being in 'New' state theoretically.
@@ -47,18 +70,18 @@ int main(){
             pthread_join(flights[i], NULL);
         }
 
-        printf("||CHILD PROCESS|| Terminated.");
+        printf("||CHILD PROCESS|| Terminated. \n");
         return 0; // Termination of the child process
     }
     else if (pid >0){ // PID > 0 denotes parent process
 
         wait(NULL); //makes the parent process wait for the termination of child process
-        printf("||PARENT PROCESS|| Terminated.");
+        printf("||PARENT PROCESS|| Terminated. \n");
     
     }else{ // PID <0 indicates that there was some issue/error with creating the child process
     
-        printf("Fork failed its execution!");
-    
+        printf("Fork failed its execution! \n");
+ 
     }
 
     return 0;
