@@ -48,7 +48,7 @@ int main(){
         history_count[i] = 0; // Initially, all the frame slots are empty.  
     }
 
-    int requests_cpu[] = {2027,2028,3039,4050,5600,6700,7800};
+    int requests_cpu[] = {2027,2028,3039,4050,5600,6700,7800,2027};
     int no_requests = sizeof(requests_cpu) / sizeof(requests_cpu[0]);
 
     printf("Requested addresses: ");
