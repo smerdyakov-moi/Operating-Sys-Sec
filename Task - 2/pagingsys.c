@@ -48,7 +48,7 @@ int main(){
         history_count[i] = 0; // Initially, all the frame slots are empty.  
     }
 
-    int requests_cpu[] = {2027,2028,3039,4050,5600};
+    int requests_cpu[] = {2027,2028,3039,4050,5600,6700,7800};
     int no_requests = sizeof(requests_cpu) / sizeof(requests_cpu[0]);
 
     printf("Requested addresses: ");
@@ -151,7 +151,7 @@ int main(){
         printf("||  FRAME NO   ||           CONTENT               \n");
         printf("__________________________________________________\n");
 
-        for (int i = 0 ; i < NUM_FRAMES ; i ++ ){
+        for (int i = NUM_FRAMES-1 ; i >=0 ; i -- ){
             printf ("||  Frame  %d   ||", i);
 
             if (physical_frames[i] == -1 ){
