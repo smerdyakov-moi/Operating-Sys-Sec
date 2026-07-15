@@ -48,8 +48,10 @@ int main(){
         history_count[i] = 0; // Initially, all the frame slots are empty.  
     }
 
-    int requests_cpu[] = {2027,2028,3039,4050,5600,6700,7800};
+    int requests_cpu[] = {2027,2028,3039,4050,5600,6700,7800,2027};
     int no_requests = sizeof(requests_cpu) / sizeof(requests_cpu[0]);
+
+    int ptr_fifo = 0; // Points to frame holding the oldest page
 
     printf("Requested addresses: ");
     for (int i = 0 ; i < no_requests ; i ++ ){
@@ -142,7 +144,23 @@ int main(){
             }
 
             if (!found){
-                printf("RAM isn't empty!\n");
+                printf("|| FULL RAM || Removing Oldest page %d from  Frame %d \n", physical_frames[ptr_fifo],ptr_fifo);
+
+                // Overwriting the old frame with the new page ID
+                physical_frames[ptr_fifo] = page_no;
+                int phys_addr = (ptr_fifo * FRAME_SIZE) + page_offset;
+
+                printf("Loaded Page No. %d into Frame No. %d \n", page_no, ptr_fifo);
+                printf("Physical Memory Mapping Location: %d \n", phys_addr);
+
+                // Clearing out the history_count and addr_history for the new page storage
+                history_count[ptr_fifo] = 0 ;
+                addr_history[ptr_fifo][history_count[ptr_fifo]] = phys_addr;
+                history_count[ptr_fifo]+=1;
+                
+                // Incrementing the fifo pointer to track the next oldest frame (Ensure circular wrapping through % operator)
+                ptr_fifo = (ptr_fifo+1)%NUM_FRAMES;
+
             }
         }
 
