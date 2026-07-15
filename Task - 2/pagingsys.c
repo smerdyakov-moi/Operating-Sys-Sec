@@ -26,6 +26,8 @@ int main(){
     printf("Calculated Total Pages       = %d logical pages\n", NUM_PAGES);
     printf("Configured Main Memory Size  = %d bytes (Physical RAM)\n", MEM_SIZE);
     printf("Calculated Total Frames      = %d physical frames\n", NUM_FRAMES);
+
+    printf("\n");
  
     
     // Physical RAM Allocation
@@ -36,8 +38,29 @@ int main(){
         physical_frames[i] = -1; // -1 means a completely empty frame slot
     }
 
-    int requests_cpu[] = {1023,2028,3039,4050,5600,6700,7800,8900,10002};
+    // Visualization arrays
+
+    int addr_history[NUM_FRAMES][50]; // stores up to 50 physical address per each frame slot (50 only for 
+    // simulation purpose maximum is 1024 as we know)
+    int history_count[NUM_FRAMES]; //tracks how many addresses are saved in each frame
+
+    for (int i = 0 ; i< NUM_FRAMES ; i ++){
+        history_count[i] = 0; // Initially, all the frame slots are empty.  
+    }
+
+    int requests_cpu[] = {2027,2028,3039,4050,5600};
     int no_requests = sizeof(requests_cpu) / sizeof(requests_cpu[0]);
+
+    printf("Requested addresses: ");
+    for (int i = 0 ; i < no_requests ; i ++ ){
+        if(i!=no_requests-1){
+            printf(" %d, ",requests_cpu[i]);
+        }else{
+            printf(" %d.", requests_cpu[i]);
+        }
+    }
+
+    printf("\n\n");
 
     int pg_faults = 0; // Counter variable for page faults
     int pg_hits = 0; // Counter variable for page hits
@@ -92,6 +115,10 @@ int main(){
             printf("||PAGE HIT|| Target resides in Frame No: %d \n",frame_located);
             printf("Physical Memory Mapping Location: %d \n", phys_addr);
 
+            // Saving physical address into the array map
+            addr_history[frame_located][history_count[frame_located]] = phys_addr;
+            history_count[frame_located]++;
+
         }else{
             pg_faults+=1;
             printf("||PAGE MISS|| Target page not found in RAM! \n");
@@ -106,6 +133,10 @@ int main(){
 
                     printf("Free slot found! Loaded Page No. %d into Frame No. %d \n", page_no,j);
                     printf("Physical Memory Mapping Location: %d \n", phys_addr);
+
+                    addr_history[j][history_count[j]] = phys_addr;
+                    history_count[j]+=1;
+
                     break;
                 }
             }
@@ -114,6 +145,33 @@ int main(){
                 printf("RAM isn't empty!\n");
             }
         }
+
+        // Visualization Table (RAM) after each CPU request
+        printf("__________________________________________________\n");
+        printf("||  FRAME NO   ||           CONTENT               \n");
+        printf("__________________________________________________\n");
+
+        for (int i = 0 ; i < NUM_FRAMES ; i ++ ){
+            printf ("||  Frame  %d   ||", i);
+
+            if (physical_frames[i] == -1 ){
+                printf("             EMPTY \n");
+            }else{
+                printf("         Page %d", physical_frames[i]);
+                
+                //Loop to print the saved address for this frame slot
+                
+                for (int x = 0 ; x < history_count[i] ; x ++ ){
+                    if(x==0){
+                        printf("[%d]", addr_history[i][x]);
+                    }else{
+                        printf(", [%d]", addr_history[i][x]);
+                    }
+                }
+                printf("\n");
+            }
+        }
+        printf("__________________________________________________\n");
         printf("\n");
     }
 
