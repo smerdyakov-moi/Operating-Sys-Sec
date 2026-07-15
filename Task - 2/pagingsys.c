@@ -36,12 +36,15 @@ int main(){
         physical_frames[i] = -1; // -1 means a completely empty frame slot
     }
 
-    int requests_cpu[] = {4500,1051 ,2305, 4550, 6000,11000};
+    int requests_cpu[] = {1023,2028,3039,4050,5600,6700,7800,8900,10002};
     int no_requests = sizeof(requests_cpu) / sizeof(requests_cpu[0]);
 
+    int pg_faults = 0; // Counter variable for page faults
+    int pg_hits = 0; // Counter variable for page hits
+
     // Primary Paging System
-    for (int i = 0; i < no_requests ; i ++) {
-        int virtual_address = requests_cpu[i]; 
+    for (int k = 0; k < no_requests ; k ++) {
+        int virtual_address = requests_cpu[k]; 
         printf("CPU demanding access to virtual address: %d \n",virtual_address);
 
         // Checking whether the virtual address requested is within the boundary of process size or not
@@ -65,11 +68,55 @@ int main(){
         // Pg Off = 4%2 = 0 (True)
 
         int page_no = virtual_address / PAGE_SIZE;
-
         int page_offset = virtual_address  % PAGE_SIZE ;
 
         printf("Page Number = %d, Page Offset = %d \n", page_no, page_offset);
 
+        // RAM HIT/MISS Evaluation before Page Replacement Algorithm
 
+        bool hit = false;
+        int frame_located = -1;
+
+        for (int i = 0 ; i < NUM_FRAMES; i ++){
+            if (physical_frames[i] == page_no){
+                hit = true;
+                frame_located = i;
+                break;
+            }
+        }
+
+        if (hit){
+            pg_hits+=1;
+            // Calculating the exact physical address
+            int phys_addr = (frame_located*FRAME_SIZE) + page_offset; // note that page_offset equals frame_offset
+            printf("||PAGE HIT|| Target resides in Frame No: %d \n",frame_located);
+            printf("Physical Memory Mapping Location: %d \n", phys_addr);
+
+        }else{
+            pg_faults+=1;
+            printf("||PAGE MISS|| Target page not found in RAM! \n");
+
+            // Locating an empty frame slot
+            bool found = false;
+            for (int j = 0; j < NUM_FRAMES ; j++){
+                if (physical_frames[j] == -1){
+                    physical_frames[j] = page_no;
+                    found = true;
+                    int phys_addr = (j*FRAME_SIZE) + page_offset;
+
+                    printf("Free slot found! Loaded Page No. %d into Frame No. %d \n", page_no,j);
+                    printf("Physical Memory Mapping Location: %d \n", phys_addr);
+                    break;
+                }
+            }
+
+            if (!found){
+                printf("RAM isn't empty!\n");
+            }
+        }
+        printf("\n");
     }
+
+    printf("Page Hit Ratio: %.2f%% \n", ((double)pg_hits / no_requests) * 100);
+    printf("Page Fault Ratio: %.2f%% \n", ((double)pg_faults / no_requests) * 100);
 }
