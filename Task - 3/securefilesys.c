@@ -50,7 +50,47 @@ typedef struct {
 
 } VirtualFile;
 
+// Simulating arrays as our database
+
+User users[MAX_USERS]; //
+int totalUsers = 0; //Initially set up with 0 users
+
+VirtualFile files[MAX_FILES];
+int totalFiles = 0;
+
+//Security variables for tracking the currently logged in user/group (-1 refers to no active login)
+int current_uid = -1;
+int current_groupid = -1;
+
+//Initializing the system 
+void initialize_system() {
+    
+    // Establishing the absolute root administrator account (UID 0, Group 0)
+    users[totalUsers].user_id = 0;
+    users[totalUsers].group_id = 0;
+    strcpy(users[totalUsers].username, "root");
+    strcpy(users[totalUsers].password, "root123");
+    totalUsers++;
+
+    // Establishing a standard unprivileged user account for access control testing (UID 1001, Group 1001)
+    users[totalUsers].user_id = 1001;
+    users[totalUsers].group_id = 1001;
+    strcpy(users[totalUsers].username, "guest");
+    strcpy(users[totalUsers].password, "guest123");
+    totalUsers++;
+
+    printf("||SYSTEM INITIALIZATION|| Mock database created successfully.\n");
+    printf("||SYSTEM INITIALIZATION|| Accounts built: 'root' (ID 0) and 'guest' (ID 1001).\n\n");
+}
+
 int main(){
+
+    //Booting up mock environment data structures
+    initialize_system();
+
+    if(current_uid == -1){
+        printf("NO USER CURRENTLY LOGGED IN! \n");
+    }
 
     return 0;
 }
