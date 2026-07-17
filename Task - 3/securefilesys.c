@@ -150,6 +150,35 @@ void logout_user(){
     printf("Logged out successfully! \n");
 }
 
+bool eval_permissions(int file_index, char mode){
+
+    // Root bypasses all the permission restrictions
+    if (current_uid ==0 ){
+        return true;
+    }
+
+    // Evaluating whether logged in user is the owner of the file
+    if (current_uid == files[file_index].owner_id){
+        if (mode == 'r'){ return files[file_index].perm.owner.read;}
+        if (mode == 'w'){ return files[file_index].perm.owner.write;}
+        if (mode == 'x'){ return files[file_index].perm.owner.execute;}
+    }
+
+    // Evaluating whether user belongs to the file's assigned group or not
+    if (current_groupid == files[file_index].group_id){
+        if (mode == 'r'){ return files[file_index].perm.group.read;}
+        if (mode == 'w'){ return files[file_index].perm.group.write;}
+        if (mode == 'x'){ return files[file_index].perm.group.execute;}
+    }
+
+    // Evaluating for all other users
+    if (mode == 'r') return files[file_index].perm.others.read;
+    if (mode == 'w') return files[file_index].perm.others.write;
+    if (mode == 'x') return files[file_index].perm.others.execute;
+
+    return false;
+}
+
 int main(){
 
     //Booting up mock environment data structures
