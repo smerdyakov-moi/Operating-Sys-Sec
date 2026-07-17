@@ -83,10 +83,30 @@ void initialize_system() {
     printf("||SYSTEM INITIALIZATION|| Accounts built: 'root' (ID 0) and 'guest' (ID 1001).\n\n");
 }
 
+// Helper function to track user logs (In append mode so as to keep track of older history logs)
+void audit_action(char *username, char *status, char *action){
+    FILE *logfile = fopen("audit.log","a"); //APPEND MODE
+    if (logfile == NULL){
+        printf("Failed to access audit log! \n");
+        return;
+    }
+
+    //Grabing current system time
+    time_t raw_time = time(NULL);
+    char *time_str = ctime(&raw_time);
+
+    //Printing formatted security string into the audit log/file
+    fprintf(logfile, "[%s] USER: %s || ACTION: %s || STATUS: %s \n"),time_str,username,action,status);
+
+    fclose(logfile);
+}
+
 void login_user(char *username, char *password){
     // If the input strings are too long (i.e over the limit of MAX_STR), it's rejected immediately
     if(strlen(username)>=MAX_STR || strlen(password)>=MAX_STR){
         printf("||BLOCKED|| Input size exceeds limits! Rejected incoming request! \n");
+        audit_action("RISK","INPUT TOO LENGTHY","LOGIN");
+        return;
     }
 
     //Looping through the user database (array) to check whether username/pw combo exists or not
@@ -97,11 +117,13 @@ void login_user(char *username, char *password){
                 current_groupid = users[i].group_id;
 
                 printf("Welcome back: %s. Logged In successfully with UID: %d \n", username,current_uid);
+                audit_action(username,"SUCCESS","LOGIN");
                 return;
             }
         }
     }
     printf("Incorrect username/password credentials! \n");
+    audit_action(username,"INCORRECT CREDS", "LOGIN");
 }
 
 void logout_user(){
