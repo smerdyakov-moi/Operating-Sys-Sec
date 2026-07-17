@@ -94,6 +94,7 @@ void audit_action(char *username, char *status, char *action){
     //Grabing current system time
     time_t raw_time = time(NULL);
     char *time_str = ctime(&raw_time);
+    time_str[strlen(time_str) - 1] = '\0';
 
     //Printing formatted security string into the audit log/file
     fprintf(logfile, "[%s] USER: %s || ACTION: %s || STATUS: %s \n",time_str,username,action,status);
