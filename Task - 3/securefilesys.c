@@ -412,6 +412,57 @@ void user_create(char *username, char *password, int gid){ //gid = group id
     audit_action("root", "SUCCESS", "CREATE USER");
 }
 
+void user_delete(char *username) {
+    if (current_uid != 0) {
+        printf("||SECURITY BLOCKED|| Access Denied: Only root can remove accounts!\n\n");
+        audit_action(current_active_user(), "UNAUTHORIZED_USER_REMOVAL_ATTEMPT", "DELETE_USER");
+        return;
+    }
+
+    if (strcmp(username, "root") == 0) {
+        printf("||BLOCKED|| Structural Lockout: The root superuser account cannot be deleted!\n\n");
+        return;
+    }
+
+    for (int i = 0; i < totalUsers; i++) {
+        if (strcmp(users[i].username, username) == 0) {
+            int target_uid = users[i].user_id; // Keep track of the target UID before erasing it
+
+            // Removing User: Normal Left Shift
+            for (int j = i; j < totalUsers - 1; j++) {
+                users[j] = users[j + 1];
+            }
+            totalUsers--;
+
+            // Deleting all the files owned by the owner for cleanup
+            // Looping backwards to prevent index shifting bugs during left-shiftnig
+            int purged_files_count = 0;
+            for (int k = totalFiles - 1; k >= 0; k--) {
+                if (files[k].owner_id == target_uid) {
+
+                    // Shift subsequent virtual files to the left
+                    for (int m = k; m < totalFiles - 1; m++) {
+                        files[m] = files[m + 1];
+                    }
+                    totalFiles--;
+                    purged_files_count++;
+                }
+            }
+
+            printf("||SUCCESS|| Account '%s' permanently erased.\n", username);
+            if (purged_files_count > 0) {
+                printf("||DISK CLEANUP|| Purged %d orphaned files owned by '%s' from storage.\n\n", purged_files_count, username);
+            } else {
+                printf("\n");
+            }
+
+            audit_action("root", "SUCCESS", "DELETE USER");
+            return;
+        }
+    }
+    printf("ERROR: Target user '%s' not found.\n\n", username);
+}
+
 int main(){
 
     // Booting up backend structures
@@ -426,7 +477,7 @@ int main(){
     printf("<------------------------------------------------------->\n\n");
     printf("                     VIRTUAL OS ENVIRONMENT              \n\n");
     printf("    Commands: login,logout,adduser,create,read,write     \n\n");
-    printf("                    delete,encrypt,dump,exit             \n\n");
+    printf("          delete,encrypt,dump,removeuser,exit            \n\n");
     printf("<------------------------------------------------------->\n\n");
     
     while (true){
@@ -456,8 +507,8 @@ int main(){
         } else if (strcmp(command, "create") == 0) {
             printf("Enter Filename: ");
             scanf("%s", arg1);
-            printf("Enter Content (no spaces): ");
-            scanf("%s", arg2);
+            printf("Enter Content: ");
+            scanf(" %[^\n]", arg2);
 
             // Default safe permissions applied to all CLI creations
             // Owner R/W, Group Read, Others Blocked
@@ -477,7 +528,7 @@ int main(){
             printf("Enter Filename: ");
             scanf("%s", arg1);
             printf("Enter New Content (no spaces): ");
-            scanf("%s", arg2);
+            scanf(" %[^\n]", arg2);
             file_write(arg1, arg2);
 
         } else if (strcmp(command, "delete") == 0) {
@@ -500,10 +551,15 @@ int main(){
             }
 
         } else if (strcmp(command, "exit") == 0) {
-            printf("Shutting down environemtn! \n");
+            printf("Shutting down environemnt! \n");
             break;
 
-        } else {
+        }else if (strcmp(command,"removeuser") == 0){
+            printf("Enter Username to remove: ");
+            scanf("%s", arg1);
+            user_delete(arg1);
+        }
+         else {
             printf("Command not found! Try: login, logout, adduser, create, read, write, delete, encrypt, dump, exit\n\n");
         }
     }
