@@ -78,15 +78,8 @@ void initialize_system() {
     strcpy(users[totalUsers].password, "root123");
     totalUsers+=1;
 
-    // Establishing a standard unprivileged user account for access control testing (UID 1001, Group 1001)
-    users[totalUsers].user_id = 1001;
-    users[totalUsers].group_id = 1001;
-    strcpy(users[totalUsers].username, "guest");
-    strcpy(users[totalUsers].password, "guest123");
-    totalUsers+=1;
-
     printf("||SYSTEM INITIALIZATION|| Mock database created successfully.\n");
-    printf("||SYSTEM INITIALIZATION|| Accounts built: 'root' (ID 0) and 'guest' (ID 1001).\n\n");
+    printf("||SYSTEM INITIALIZATION|| Accounts built: 'root' (ID 0).\n\n");
 }
 
 // Helper function to track user logs (In append mode so as to keep track of older history logs)
@@ -421,49 +414,93 @@ void user_create(char *username, char *password, int gid){ //gid = group id
 
 int main(){
 
-    //Booting up mock environment data structures
+    // Booting up backend structures
     initialize_system();
 
-    // Defining basic permissions
-    // Owner/root can read/write whereas group can read only and others don't have any priviliges.
-    FilePermission restricted_mask;
-    restricted_mask.owner.read = true;   restricted_mask.owner.write = true;   restricted_mask.owner.execute = false;
-    restricted_mask.group.read = true;   restricted_mask.group.write = false;  restricted_mask.group.execute = false;
-    restricted_mask.others.read = false;  restricted_mask.others.write = false; restricted_mask.others.execute = false;
+    // Registering terminal inputs
+    char command[MAX_STR]; 
+    char arg1[MAX_STR]; // username
+    char arg2[MAX_STR]; //password
+    int int_arg; //group id
 
-    if(current_uid == -1){
-        printf("NO USER CURRENTLY LOGGED IN! \n");
+    printf("<------------------------------------------------------->\n\n");
+    printf("                     VIRTUAL OS ENVIRONMENT              \n\n");
+    printf("    Commands: login,logout,adduser,create,read,write     \n\n");
+    printf("                    delete,encrypt,dump,exit             \n\n");
+    printf("<------------------------------------------------------->\n\n");
+    
+    while (true){
+        printf("[%s@virtualOS]",current_active_user());
+
+        if (scanf("%s",command) == EOF) break;
+
+        if (strcmp(command, "login") == 0) {
+            printf("Enter Username: ");
+            scanf("%s", arg1);
+            printf("Enter Password: ");
+            scanf("%s", arg2);
+            login_user(arg1, arg2);
+
+        } else if (strcmp(command, "logout") == 0) {
+            logout_user();
+
+        } else if (strcmp(command, "adduser") == 0) {
+            printf("Enter New Username: ");
+            scanf("%s", arg1);
+            printf("Enter New Password: ");
+            scanf("%s", arg2);
+            printf("Assign Group ID (Integer): ");
+            scanf("%d", &int_arg);
+            user_create(arg1, arg2, int_arg);
+
+        } else if (strcmp(command, "create") == 0) {
+            printf("Enter Filename: ");
+            scanf("%s", arg1);
+            printf("Enter Content (no spaces): ");
+            scanf("%s", arg2);
+
+            // Default safe permissions applied to all CLI creations
+            // Owner R/W, Group Read, Others Blocked
+            FilePermission dynamic_mask;
+            dynamic_mask.owner.read = true;   dynamic_mask.owner.write = true;   dynamic_mask.owner.execute = false;
+            dynamic_mask.group.read = true;   dynamic_mask.group.write = false;  dynamic_mask.group.execute = false;
+            dynamic_mask.others.read = false; dynamic_mask.others.write = false; dynamic_mask.others.execute = false;
+
+            file_creation(arg1, arg2, dynamic_mask);
+
+        } else if (strcmp(command, "read") == 0) {
+            printf("Enter Filename: ");
+            scanf("%s", arg1);
+            file_read(arg1);
+
+        } else if (strcmp(command, "write") == 0) {
+            printf("Enter Filename: ");
+            scanf("%s", arg1);
+            printf("Enter New Content (no spaces): ");
+            scanf("%s", arg2);
+            file_write(arg1, arg2);
+
+        } else if (strcmp(command, "delete") == 0) {
+            printf("Enter Filename: ");
+            scanf("%s", arg1);
+            file_delete(arg1);
+
+        } else if (strcmp(command, "encrypt") == 0) {
+            printf("Enter Filename: ");
+            scanf("%s", arg1);
+            file_encrypt(arg1);
+
+        } else if (strcmp(command, "dump") == 0) {
+            raw_mem(); // Show raw memory to prove encryption worked
+
+        } else if (strcmp(command, "exit") == 0) {
+            printf("Shutting down environemtn! \n");
+            break;
+
+        } else {
+            printf("Command not found! Try: login, logout, adduser, create, read, write, delete, encrypt, dump, exit\n\n");
+        }
     }
-
-    // Running Sample Tests for initial mock setup
-    
-    // Anonymous Unauthenticated Breaches
-    printf("--- [TEST A] Attempting actions as an unauthenticated guest ---\n");
-    file_creation("hack.txt", "Malicious inject payload data.", restricted_mask); // Should be denied!
-    printf("\n");
-
-    // Admin Setup Operations
-    printf("--- [TEST B] Authenticating as Administrator ---\n");
-    login_user("root", "root123");
-    file_creation("clearance_secrecy.txt", "CONFIDENTIAL: Financial ledger records 2026.", restricted_mask);
-    file_read("clearance_secrecy.txt"); // Should grant full access via root privileges
-    
-    logout_user();
-
-    // Unauthorized User Access Privilege Breach
-    printf("--- [TEST C] Authenticating as Restricted User ---\n");
-    login_user("guest", "guest123");
-    
-    printf("[Attempting Read Action...]\n");
-    file_read("clearance_secrecy.txt"); // Security Blocked triggered
-
-    printf("[Attempting Write-Corrupt Action...]\n");
-    file_write("clearance_secrecy.txt", "WIPING OUT SYSTEM LOG DATA!"); // Security Blocked triggered
-
-    printf("[Attempting Deletion Sabotage...]\n");
-    file_delete("clearance_secrecy.txt"); // Security Blocked triggered
-    
-    logout_user();
 
     return 0;
 }
