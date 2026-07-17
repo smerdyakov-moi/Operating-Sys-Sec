@@ -420,7 +420,7 @@ int main(){
     // Registering terminal inputs
     char command[MAX_STR]; 
     char arg1[MAX_STR]; // username
-    char arg2[MAX_STR]; //password
+    char arg2[MAX_CONTENT]; //password
     int int_arg; //group id
 
     printf("<------------------------------------------------------->\n\n");
@@ -491,7 +491,13 @@ int main(){
             file_encrypt(arg1);
 
         } else if (strcmp(command, "dump") == 0) {
-            raw_mem(); // Show raw memory to prove encryption worked
+
+            if(current_uid!=0){
+                printf("||SECURITY BLOCKED|| Root level priviliges! \n");
+                audit_action(current_active_user(),"UNAUTHORIZED DUMP ATTEMPT", "SYSTEM DUMP");
+            }else{
+                raw_mem(); // Show raw memory to prove encryption worked
+            }
 
         } else if (strcmp(command, "exit") == 0) {
             printf("Shutting down environemtn! \n");
