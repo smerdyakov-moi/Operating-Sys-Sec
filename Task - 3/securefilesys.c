@@ -303,6 +303,39 @@ void file_delete(char *filename){
     printf("ERROR: File '%s' not found.\n", filename);
 }
 
+void encrypt_file(char *filename){
+    char active_user[MAX_STR];
+    strcpy(active_user,current_active_user());
+
+    for (int i = 0; i < totalFiles; i++) {
+        if (strcmp(files[i].filename, filename) == 0) {
+
+            // Only users holding valid write metrics can encrypt
+            if (!eval_permissions(i, 'w')) {
+                printf("||SECURITY BLOCKED|| Access Denied: Insufficient authorization to encrypt '%s'!\n\n", filename);
+                audit_action(active_user, "ENCRYPT DENIED", "FILE ENCRYPT");
+                return;
+            }
+
+            if (files[i].isEncrypted) {
+                printf("Notice: File '%s' is already cryptographically secure.\n", filename);
+                return;
+            }
+
+            // In-place Bitwise XOR execution processing track loop
+            for (int j = 0; j < files[i].size; j++) {
+                files[i].content[j] ^= CIPHER_KEY;
+            }
+            files[i].isEncrypted = true;
+
+            printf("||ENCRYPT SUCCESS|| File '%s' is encrypted inside system array storage.\n", filename);
+            audit_action(active_user, "SUCCESS ENCRYPTED", "FILE ENCRYPT");
+            return;
+        }
+    }
+    printf("ERROR: File '%s' not found.\n\n", filename);
+}
+
 int main(){
 
     //Booting up mock environment data structures
