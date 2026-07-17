@@ -127,12 +127,8 @@ void login_user(char *username, char *password){
     audit_action(username,"INCORRECT CREDS", "LOGIN");
 }
 
-void logout_user(){
-    if(current_uid == -1){
-        printf("No active user session! \n");
-        return;
-    }
-
+//Helper function for tracking current user name (to achieve a much more modular program)
+void current_active_user(){
     char active_user[MAX_STR]="DEFAULT";
     for (int i = 0; i < totalUsers ; i++ ){
         if(users[i].user_id == current_uid){
@@ -140,6 +136,18 @@ void logout_user(){
             break;
         }
     }
+
+    return active_user;
+}
+
+void logout_user(){
+    if(current_uid == -1){
+        printf("No active user session! \n");
+        return;
+    }
+
+    char active_user[MAX_STR]="DEFAULT";
+    strcpy(active_user,current_active_user);
 
     audit_action(active_user,"SUCCESS","LOGOUT");
 
@@ -211,15 +219,37 @@ void file_creation(char *filename, char *content, FilePermission perm){
     totalFiles+=1;
 
     char active_user[MAX_STR]="DEFAULT";
-    for (int i = 0; i < totalUsers ; i++ ){
-        if(users[i].user_id == current_uid){
-            strcpy(active_user,users[i].username);
-            break;
-        }
-    }
+    strcpy(active_user,current_active_user); 
 
     printf("||SUCCESS|| File: '%s' created by UID: %d \n",filename,current_uid);
     audit_action(active_user,"SUCCESS","CREATE FILE");
+}
+
+void file_read(char *filename){
+    for (int i = 0; i < totalFiles; i++) {
+        if (strcmp(files[i].filename, filename) == 0) {
+
+            // Check if user is authorized to read this specific file
+            if (!check_permissions(i, 'r')) {
+                printf("||SECURITY BLOCKED|| Access Denied: You do not have READ privileges for '%s'!\n", filename);
+                
+                if(current_uid == -1){
+                    audit_action("GUEST","ACCESS DENIED", "READ FILE");
+                }else{
+                    char active_user[MAX_STR]="DEFAULT";
+                    strcpy(active_user,current_active_user);
+                    audit_action(active_user,"ACCESS DENIED", "READ FILE");
+                }
+
+                return;
+            }
+
+            printf("READ SUCCESS: Content of '%s':\n  -->   %s\n", files[i].filename, files[i].content);
+            audit_action("USER", "SUCCESS", "READ FILE");
+            return;
+        }
+    }
+    printf("ERROR: File '%s' not found in system storage.\n", filename);
 }
 
 int main(){
