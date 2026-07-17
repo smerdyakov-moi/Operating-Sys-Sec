@@ -4,6 +4,9 @@
 #include<time.h>
 #include<stdbool.h>
 
+int next_uid = 1001; // This only increases guaranteeing the user id is unique every time a 
+    // a new user is created. Less heavy than using a random library.
+
 // Limiting string sizes to prevent input overflow
 #define MAX_CONTENT 512
 #define MAX_USERS 10
@@ -373,6 +376,47 @@ void raw_mem(){
         printf("\"\n");
     }
     printf("\n\n\n");
+}
+
+void user_create(char *username, char *password, int gid){ //gid = group id
+
+    // Only roots are allowed to create users
+    if (current_uid != 0) {
+        printf("||SECURITY BLOCKED|| Access Denied: Only root can provision new accounts!\n\n");
+        audit_action(current_active_user(), "UNAUTHORIZED USER ADD ATTEMPT", "CREATE USER");
+        return;
+    }
+
+    // Buffer Overflow
+    if (strlen(username) >= MAX_STR || strlen(password) >= MAX_STR) {
+        printf("||BLOCKED|| Input length rejects buffer limits!\n\n");
+        return;
+    }
+
+    // Maximum user limit reached
+    if (totalUsers >= MAX_USERS) {
+        printf("ERROR: System user capacity reached!\n\n");
+        return;
+    }
+
+    // Preventing duplicate users
+    for (int i = 0; i < totalUsers; i++) {
+        if (strcmp(users[i].username, username) == 0) {
+            printf("||BLOCKED|| Username '%s' already exists in the system database!\n\n", username);
+            return;
+        }
+    }
+
+    // Populating Users
+    users[totalUsers].user_id = next_uid; // Monotonically increasing secure UIDs
+    next_uid +=1;
+    users[totalUsers].group_id = gid;    // Explicitly placed into target group matrix
+    strcpy(users[totalUsers].username, username);
+    strcpy(users[totalUsers].password, password);
+
+    totalUsers += 1;
+    printf("Account '%s' created successfully! \n",username);
+    audit_action("root", "SUCCESS", "CREATE USER");
 }
 
 int main(){
