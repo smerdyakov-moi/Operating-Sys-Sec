@@ -83,16 +83,38 @@ void initialize_system() {
     printf("||SYSTEM INITIALIZATION|| Accounts built: 'root' (ID 0) and 'guest' (ID 1001).\n\n");
 }
 
-void login_user(char *username, char *passowrd){
+void login_user(char *username, char *password){
     // If the input strings are too long (i.e over the limit of MAX_STR), it's rejected immediately
-    if(strlen(username)>=MAX_STR || strlen(passowrd)>=MAX_STR){
-        printf("||BLOCKED|| Input size exceeds limits! Rejected incoming request!");
+    if(strlen(username)>=MAX_STR || strlen(password)>=MAX_STR){
+        printf("||BLOCKED|| Input size exceeds limits! Rejected incoming request! \n");
     }
 
     //Looping through the user database (array) to check whether username/pw combo exists or not
     for(int i = 0 ; i < totalUsers ; i ++){
-        if(users[i].username)
+        if(strcmp(users[i].username,username) == 0) {
+            if(strcmp(users[i].password,password) == 0){
+                current_uid = users[i].user_id;
+                current_groupid = users[i].group_id;
+
+                printf("Welcome back: %s. Logged In successfully with UID: %d \n", username,current_uid);
+                return;
+            }
+        }
     }
+    printf("Incorrect username/password credentials! \n");
+}
+
+void logout_user(){
+    if(current_uid == -1){
+        printf("No active user session! \n");
+        return;
+    }
+
+
+    current_uid = -1;
+    current_groupid = -1;
+
+    printf("Logged out successfully! \n");
 }
 
 int main(){
