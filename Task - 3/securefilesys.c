@@ -127,17 +127,14 @@ void login_user(char *username, char *password){
     audit_action(username,"INCORRECT CREDS", "LOGIN");
 }
 
-//Helper function for tracking current user name (to achieve a much more modular program)
-void current_active_user(){
-    char active_user[MAX_STR]="DEFAULT";
+// FIX: Returns a direct pointer (char*) to persistent data instead of a dying local stack string
+char* current_active_user(){
     for (int i = 0; i < totalUsers ; i++ ){
         if(users[i].user_id == current_uid){
-            strcpy(active_user,users[i].username);
-            break;
+            return users[i].username; // Safe! Lives globally in memory
         }
     }
-
-    return active_user;
+    return "GUEST"; // Default state if no active UID is mapped
 }
 
 void logout_user(){
@@ -147,7 +144,7 @@ void logout_user(){
     }
 
     char active_user[MAX_STR]="DEFAULT";
-    strcpy(active_user,current_active_user);
+    strcpy(active_user, current_active_user()); // FIX: Added function execution parentheses ()
 
     audit_action(active_user,"SUCCESS","LOGOUT");
 
@@ -161,7 +158,7 @@ void logout_user(){
 bool eval_permissions(int file_index, char mode){
 
     // Root bypasses all the permission restrictions
-    if (current_uid ==0 ){
+    if (current_uid == 0 ){
         return true;
     }
 
@@ -219,37 +216,88 @@ void file_creation(char *filename, char *content, FilePermission perm){
     totalFiles+=1;
 
     char active_user[MAX_STR]="DEFAULT";
-    strcpy(active_user,current_active_user); 
+    strcpy(active_user, current_active_user()); 
 
     printf("||SUCCESS|| File: '%s' created by UID: %d \n",filename,current_uid);
     audit_action(active_user,"SUCCESS","CREATE FILE");
 }
 
 void file_read(char *filename){
+    char active_user[MAX_STR]="DEFAULT";
+    strcpy(active_user, current_active_user()); 
+                    
     for (int i = 0; i < totalFiles; i++) {
         if (strcmp(files[i].filename, filename) == 0) {
 
             // Check if user is authorized to read this specific file
-            if (!check_permissions(i, 'r')) {
+            if (!eval_permissions(i, 'r')) {
                 printf("||SECURITY BLOCKED|| Access Denied: You do not have READ privileges for '%s'!\n", filename);
-                
-                if(current_uid == -1){
-                    audit_action("GUEST","ACCESS DENIED", "READ FILE");
-                }else{
-                    char active_user[MAX_STR]="DEFAULT";
-                    strcpy(active_user,current_active_user);
-                    audit_action(active_user,"ACCESS DENIED", "READ FILE");
-                }
-
+                audit_action(active_user,"ACCESS DENIED", "READ FILE");
                 return;
             }
 
             printf("READ SUCCESS: Content of '%s':\n  -->   %s\n", files[i].filename, files[i].content);
-            audit_action("USER", "SUCCESS", "READ FILE");
+            audit_action(active_user, "SUCCESS", "READ FILE");
             return;
         }
     }
     printf("ERROR: File '%s' not found in system storage.\n", filename);
+}
+
+void file_write(char *filename, char *new_content){
+    if (strlen(new_content) >= MAX_CONTENT) {
+        printf("||BLOCKED|| Content length exceeds allocation buffer limit!\n");
+        return;
+    }
+
+    char active_user[MAX_STR]="DEFAULT";
+    strcpy(active_user, current_active_user());
+
+    for (int i = 0; i < totalFiles; i++) {
+        if (strcmp(files[i].filename, filename) == 0) {
+            // Check if user is authorized to write to this file
+            if (!eval_permissions(i, 'w')) {
+                printf("||SECURITY BLOCKED|| You do not have WRITE privileges for '%s'!\n", filename);
+                audit_action(active_user, "ACCESS DENIED", "WRITE FILE");
+                return;
+            }
+
+            strcpy(files[i].content, new_content);
+            files[i].size = strlen(new_content);
+            printf("WRITE SUCCESS: File '%s' has been updated.\n", filename);
+            audit_action(active_user, "SUCCESS", "WRITE FILE");
+            return;
+        }
+    }
+    printf("ERROR: File '%s' not found.\n", filename);
+}
+
+
+void file_delete(char *filename){
+    char active_user[MAX_STR]="DEFAULT";
+    strcpy(active_user, current_active_user()); 
+
+    for (int i = 0; i < totalFiles; i++) {
+        if (strcmp(files[i].filename, filename) == 0) {
+            // Rule: Only the owner or root can completely delete a file
+            if (current_uid != 0 && current_uid != files[i].owner_id) {
+                printf("||SECURITY BLOCKED|| Deletion Denied: Only the owner or root can delete '%s'!\n\n", filename);
+                audit_action(active_user, "DELETE DENIED", "FILE DELETE");
+                return;
+            }
+
+            // Shift all subsequent files left to fill the empty array slot gap cleanly
+            for (int j = i; j < totalFiles - 1; j++) {
+                files[j] = files[j + 1];
+            }
+            totalFiles--;
+
+            printf("DELETE SUCCESS: File '%s' has been permanently erased.\n", filename);
+            audit_action(active_user, "SUCCESS", "FILE DELETE");
+            return;
+        }
+    }
+    printf("ERROR: File '%s' not found.\n", filename);
 }
 
 int main(){
