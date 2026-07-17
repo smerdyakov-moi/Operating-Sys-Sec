@@ -83,6 +83,18 @@ void initialize_system() {
     printf("||SYSTEM INITIALIZATION|| Accounts built: 'root' (ID 0) and 'guest' (ID 1001).\n\n");
 }
 
+void login_user(char *username, char *passowrd){
+    // If the input strings are too long (i.e over the limit of MAX_STR), it's rejected immediately
+    if(strlen(username)>=MAX_STR || strlen(passowrd)>=MAX_STR){
+        printf("||BLOCKED|| Input size exceeds limits! Rejected incoming request!");
+    }
+
+    //Looping through the user database (array) to check whether username/pw combo exists or not
+    for(int i = 0 ; i < totalUsers ; i ++){
+        if(users[i].username)
+    }
+}
+
 int main(){
 
     //Booting up mock environment data structures
