@@ -96,7 +96,7 @@ void audit_action(char *username, char *status, char *action){
     char *time_str = ctime(&raw_time);
 
     //Printing formatted security string into the audit log/file
-    fprintf(logfile, "[%s] USER: %s || ACTION: %s || STATUS: %s \n"),time_str,username,action,status);
+    fprintf(logfile, "[%s] USER: %s || ACTION: %s || STATUS: %s \n",time_str,username,action,status);
 
     fclose(logfile);
 }
@@ -132,7 +132,17 @@ void logout_user(){
         return;
     }
 
+    char active_user[MAX_STR]="DEFAULT";
+    for (int i = 0; i < totalUsers ; i++ ){
+        if(users[i].user_id == current_uid){
+            strcpy(active_user,users[i].username);
+            break;
+        }
+    }
 
+    audit_action(active_user,"SUCCESS","LOGOUT");
+
+    //Resetting the current user/group id after logging out
     current_uid = -1;
     current_groupid = -1;
 
@@ -147,6 +157,19 @@ int main(){
     if(current_uid == -1){
         printf("NO USER CURRENTLY LOGGED IN! \n");
     }
+
+    // Running Sample Tests for initial mock setup
+    
+    // 1: Extremely lengthy username/pw
+    printf("Massive user input \n");
+    login_user("extremelylengthyusernametryingtogainaccesstothesystemsoftware","skx122");
+
+    // 2:LogIn
+    printf("Valid Guest Login \n");
+    login_user("guest","guest123");
+
+    // 3: LogOut
+    logout_user();
 
     return 0;
 }
