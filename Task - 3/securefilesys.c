@@ -127,14 +127,14 @@ void login_user(char *username, char *password){
     audit_action(username,"INCORRECT CREDS", "LOGIN");
 }
 
-// FIX: Returns a direct pointer (char*) to persistent data instead of a dying local stack string
+// Helper function to trace active user
 char* current_active_user(){
     for (int i = 0; i < totalUsers ; i++ ){
         if(users[i].user_id == current_uid){
-            return users[i].username; // Safe! Lives globally in memory
+            return users[i].username;
         }
     }
-    return "GUEST"; // Default state if no active UID is mapped
+    return "GUEST"; // Default state if no user is currently logged in
 }
 
 void logout_user(){
@@ -305,21 +305,45 @@ int main(){
     //Booting up mock environment data structures
     initialize_system();
 
+    // Defining basic permissions
+    // Owner/root can read/write whereas group can read only and others don't have any priviliges.
+    FilePermission restricted_mask;
+    restricted_mask.owner.read = true;   restricted_mask.owner.write = true;   restricted_mask.owner.execute = false;
+    restricted_mask.group.read = true;   restricted_mask.group.write = false;  restricted_mask.group.execute = false;
+    restricted_mask.others.read = false;  restricted_mask.others.write = false; restricted_mask.others.execute = false;
+
     if(current_uid == -1){
         printf("NO USER CURRENTLY LOGGED IN! \n");
     }
 
     // Running Sample Tests for initial mock setup
     
-    // 1: Extremely lengthy username/pw
-    printf("Massive user input \n");
-    login_user("extremelylengthyusernametryingtogainaccesstothesystemsoftware","skx122");
+    // Anonymous Unauthenticated Breaches
+    printf("--- [TEST A] Attempting actions as an unauthenticated guest ---\n");
+    file_creation("hack.txt", "Malicious inject payload data.", restricted_mask); // Should be denied!
+    printf("\n");
 
-    // 2:LogIn
-    printf("Valid Guest Login \n");
-    login_user("guest","guest123");
+    // Admin Setup Operations
+    printf("--- [TEST B] Authenticating as Administrator ---\n");
+    login_user("root", "root123");
+    file_creation("clearance_secrecy.txt", "CONFIDENTIAL: Financial ledger records 2026.", restricted_mask);
+    file_read("clearance_secrecy.txt"); // Should grant full access via root privileges
+    
+    logout_user();
 
-    // 3: LogOut
+    // Unauthorized User Access Privilege Breach
+    printf("--- [TEST C] Authenticating as Restricted User ---\n");
+    login_user("guest", "guest123");
+    
+    printf("[Attempting Read Action...]\n");
+    file_read("clearance_secrecy.txt"); // Security Blocked triggered
+
+    printf("[Attempting Write-Corrupt Action...]\n");
+    file_write("clearance_secrecy.txt", "WIPING OUT SYSTEM LOG DATA!"); // Security Blocked triggered
+
+    printf("[Attempting Deletion Sabotage...]\n");
+    file_delete("clearance_secrecy.txt"); // Security Blocked triggered
+    
     logout_user();
 
     return 0;
