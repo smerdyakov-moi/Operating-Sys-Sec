@@ -10,6 +10,9 @@
 #define MAX_FILES 20
 #define MAX_STR  32
 
+// Masking byte - Binary Pattern to scramble characters via bitwise XOR operations
+#define CIPHER_KEY 0x5A;
+
 //Structure detailing permissions holding basic true/false flags for file access
 typedef struct {
 
