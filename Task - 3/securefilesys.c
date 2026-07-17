@@ -179,6 +179,49 @@ bool eval_permissions(int file_index, char mode){
     return false;
 }
 
+void file_creation(char *filename, char *content, FilePermission perm){
+
+    // Only with an active user session can someone successfully create files
+    if (current_uid == -1){
+        printf("||ERROR|| File Creation denied! Not logged in! \n");
+        audit_action("GUEST","INVALID","CREATE_FILE");
+        return;
+    }
+
+    if (strlen(filename) >= MAX_STR || strlen(content) >= MAX_CONTENT) {
+        printf("||BLOCKED|| Input size exceeds system storage limits! File creation rejected.\n\n");
+        audit_action("SYSTEM", "INPUT TOO LENGTHY", "CREATE FILE");
+        return;
+    }
+
+    // Check whether the file memory array is full or not
+    if (totalFiles >= MAX_FILES){
+        printf("Virtual disk capacity reached! \n");
+        return;
+    }
+
+    strcpy(files[totalFiles].filename, filename);
+    strcpy(files[totalFiles].content, content);
+    files[totalFiles].size = strlen(content);
+    files[totalFiles].owner_id = current_uid;
+    files[totalFiles].group_id = current_groupid;
+    files[totalFiles].perm = perm;
+    files[totalFiles].isEncrypted = false; // Initially, the status is unencrypted plaintext
+
+    totalFiles+=1;
+
+    char active_user[MAX_STR]="DEFAULT";
+    for (int i = 0; i < totalUsers ; i++ ){
+        if(users[i].user_id == current_uid){
+            strcpy(active_user,users[i].username);
+            break;
+        }
+    }
+
+    printf("||SUCCESS|| File: '%s' created by UID: %d \n",filename,current_uid);
+    audit_action(active_user,"SUCCESS","CREATE FILE");
+}
+
 int main(){
 
     //Booting up mock environment data structures
