@@ -11,7 +11,7 @@
 #define MAX_STR  32
 
 // Masking byte - Binary Pattern to scramble characters via bitwise XOR operations
-#define CIPHER_KEY 0x5A;
+#define CIPHER_KEY 0x5A
 
 //Structure detailing permissions holding basic true/false flags for file access
 typedef struct {
@@ -73,14 +73,14 @@ void initialize_system() {
     users[totalUsers].group_id = 0;
     strcpy(users[totalUsers].username, "root");
     strcpy(users[totalUsers].password, "root123");
-    totalUsers++;
+    totalUsers+=1;
 
     // Establishing a standard unprivileged user account for access control testing (UID 1001, Group 1001)
     users[totalUsers].user_id = 1001;
     users[totalUsers].group_id = 1001;
     strcpy(users[totalUsers].username, "guest");
     strcpy(users[totalUsers].password, "guest123");
-    totalUsers++;
+    totalUsers+=1;
 
     printf("||SYSTEM INITIALIZATION|| Mock database created successfully.\n");
     printf("||SYSTEM INITIALIZATION|| Accounts built: 'root' (ID 0) and 'guest' (ID 1001).\n\n");
@@ -239,7 +239,18 @@ void file_read(char *filename){
                 return;
             }
 
-            printf("READ SUCCESS: Content of '%s':\n  -->   %s\n", files[i].filename, files[i].content);
+            // Decryption Process 
+            if (files[i].isEncrypted) {
+                char temporary_decode_buffer[MAX_CONTENT];
+                for (int j = 0; j < files[i].size; j++) {
+                    temporary_decode_buffer[j] = files[i].content[j] ^ CIPHER_KEY;
+                }
+                temporary_decode_buffer[files[i].size] = '\0'; // Terminating the string bounds for clear printing result
+                printf("READ SUCCESS (AUTO-DECRYPTED VIA KERNEL): Content of '%s':\n  -->   %s\n", files[i].filename, temporary_decode_buffer);
+            } else {
+                printf("READ SUCCESS: Content of '%s':\n  -->   %s\n", files[i].filename, files[i].content);
+            }
+
             audit_action(active_user, "SUCCESS", "READ FILE");
             return;
         }
@@ -267,6 +278,9 @@ void file_write(char *filename, char *new_content){
 
             strcpy(files[i].content, new_content);
             files[i].size = strlen(new_content);
+
+            files[i].isEncrypted = false;
+
             printf("WRITE SUCCESS: File '%s' has been updated.\n", filename);
             audit_action(active_user, "SUCCESS", "WRITE FILE");
             return;
@@ -303,7 +317,7 @@ void file_delete(char *filename){
     printf("ERROR: File '%s' not found.\n", filename);
 }
 
-void encrypt_file(char *filename){
+void file_encrypt(char *filename){
     char active_user[MAX_STR];
     strcpy(active_user,current_active_user());
 
@@ -334,6 +348,31 @@ void encrypt_file(char *filename){
         }
     }
     printf("ERROR: File '%s' not found.\n\n", filename);
+}
+
+void raw_mem(){
+    printf("||DIAGNOSTIC DUMP|| \n");
+    if (totalFiles == 0){
+        printf("||EMPTY ARRAY||\n");
+    }
+    for (int i = 0 ; i <totalFiles; i ++){
+        printf("Index [%d] || File: '%s' || Encrypt Flag: %s \n",
+            i, files[i].filename, files[i].isEncrypted ? "TRUE" : "FALSE");
+
+        printf("-> Raw Array Bytes Content: \"");
+
+        // Looping byte-by-byte to show clean hexadecimal codes for unprintable data
+
+        for(int k = 0 ; k < files[i].size ; k++){
+            if (files[i].content[k] < 32 || files[i].content[k] > 126) {
+                printf("\\x%02X", (unsigned char)files[i].content[k]);
+            } else {
+                printf("%c", files[i].content[k]);
+            }
+        }
+        printf("\"\n");
+    }
+    printf("\n\n\n");
 }
 
 int main(){
