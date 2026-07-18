@@ -94,44 +94,44 @@ int main(){
     }
     printf("Remote client connected accepted! (Client FD: %d)\n\n", client_socket);
 
-    /*
-        Protocol Execution - Step A: Extracting the fixed-size packet header struct.
-        Forces the kernel to read exactly enough bytes to populate PacketHeader variables 
-        before pulling the actual message text body.
-    */
-    PacketHeader header;
-    int bytes_header = read(client_socket, &header, sizeof(PacketHeader));
-    if (bytes_header < 0) {
-        perror("Failed to read protocol header from stream!");
-        close(client_socket);
-        close(server_fd);
-        exit(EXIT_FAILURE);
-    }
+    // Persistent Loop
+    while (true) {
+        PacketHeader header;
+        
+        // Extracting the fixed-size packet header struct.
+        int bytes_header = read(client_socket, &header, sizeof(PacketHeader));
+        
+        // Intercepting network dropouts or broken socket descriptors instantly
+        if (bytes_header <= 0) {
+            printf("[NETWORK LOG] Connection dropped out or closed by client device.\n\n");
+            break;
+        }
 
-    /*
-        Data Validation Boundary Layer:
-        Evaluating payload length fields before reading data out of network channels.
-        If incoming size parameters exceed BUFFER_SIZE or go below 0, it terminates 
-        immediately to avoid out of bounds array manipulation/buffer injection overflows.
-    */
-    if (header.payload_length < 0 || header.payload_length >= BUFFER_SIZE) {
-        printf("||SECURITY BLOCKED|| Malicious payload boundary detected: %d bytes!\n\n", header.payload_length);
-        close(client_socket);
-        close(server_fd);
-        exit(EXIT_FAILURE);
-    }
+        // Processing custom control signals for graceful loop exits
+        if (strcmp(header.command, "EXIT") == 0) {
+            printf("[PROTOCOL LOG] Client cleanly terminated the stream transmission loop.\n\n");
+            break;
+        }
 
-    /*
-        Protocol Execution - Step B: Extracting the verified payload length string data.
-        Pulls precisely the number of bytes specified by the incoming packet header validation check.
-    */
-    int bytes_read = read(client_socket, buffer, header.payload_length);
-    if (bytes_read < 0) {
-        perror("Couldn't read bytes from socket stream!");
-    } else {
-        buffer[bytes_read] = '\0'; // Null terminator prevents overflow bugss
-        printf("[PROTOCOL EXECUTION] Command Type: '%s'\n", header.command);
-        printf("Client communicates: \"%s\"\n\n", buffer);
+        // Evaluating whether the payload length fields before reading data out of network channels.
+        if (header.payload_length < 0 || header.payload_length >= BUFFER_SIZE) {
+            printf("||SECURITY BLOCKED|| Malicious payload boundary detected: %d bytes!\n\n", header.payload_length);
+            break;
+        }
+
+        /*
+            Protocol Execution - Step B: Extracting the verified payload length string data.
+            Pulls precisely the number of bytes specified by the incoming packet header validation check.
+        */
+        int bytes_read = read(client_socket, buffer, header.payload_length);
+        if (bytes_read < 0) {
+            perror("Couldn't read bytes from socket stream!");
+            break;
+        } else {
+            buffer[bytes_read] = '\0'; // Null terminator prevents overflow bugss
+            printf("[PROTOCOL EXECUTION] Command Type: '%s'\n", header.command);
+            printf("Client communicates: \"%s\"\n\n", buffer);
+        }
     }
 
     /*
