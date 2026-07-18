@@ -21,6 +21,7 @@ int main(){
     int sock_fd = 0; // File Descriptor tracking local client socket channel
     struct sockaddr_in serv_addr; 
     char message[BUFFER_SIZE]; // Interactive allocation array replacing the mock string pointer
+    char server_reply[BUFFER_SIZE]; // Array to hold the server's acknowledgment message
 
     printf("Initializing Client Network.....\n\n");
 
@@ -85,10 +86,23 @@ int main(){
         printf("Transmitting raw  data bytes payload down the pipeline...\n\n");
         
         // Transmitting sequential structural protocol parts over the socket channel
-        send(sock_fd, &header, sizeof(PacketHeader), 0);
-        send(sock_fd, message, header.payload_length, 0);
+        if (send(sock_fd, &header, sizeof(PacketHeader), MSG_NOSIGNAL) < 0 || 
+            send(sock_fd, message, header.payload_length, MSG_NOSIGNAL) < 0) {
+            
+            printf("\nServer pipeline severed. Shutting down!\n\n");
+            break; // Breaks the loop cleanly so it runs your final close() routine
+        }
         
         printf("Mesasge succesful transmission \n\n");
+
+        // Reading the confirmation message back from the server
+        int reply_bytes = read(sock_fd, server_reply, BUFFER_SIZE - 1);
+        if (reply_bytes <= 0) {
+            perror("Connection to server acknowledgement failed!");
+            break;
+        }
+        server_reply[reply_bytes] = '\0'; // Null terminator prevents overflow bugss
+        printf("Server replies: \"%s\"\n\n", server_reply);
     }
 
     close(sock_fd);

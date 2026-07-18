@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <pthread.h> // Thread library for running multiple clients at the same time
 
 #define PORT 4000
 #define BUFFER_SIZE 512 //setting the buffer size for incoming messages
@@ -16,6 +17,62 @@ typedef struct {
     char session_token[32];// Cryptographic tracking identifier to isolate sessions
 } PacketHeader;
 
+// Background worker function to handle each client interaction loop individually
+void* client_handler(void* socket_desc) {
+    int client_socket = *(int*)socket_desc;
+    free(socket_desc); // Freeing the allocated socket pointer context safely
+    char buffer[BUFFER_SIZE] = {0}; // Individual buffer tracking this specific thread's data
+    char *ack_message = "SERVER_RECEIVED_OK"; // Response string sent to client
+
+    // Persistent Loop
+    while (true) {
+        PacketHeader header;
+        
+        // Extracting the fixed-size packet header struct.
+        int bytes_header = read(client_socket, &header, sizeof(PacketHeader));
+        
+        // Intercepting network dropouts or broken socket descriptors instantly
+        if (bytes_header <= 0) {
+            printf("[NETWORK LOG] Connection dropped out or closed by client device.\n\n");
+            break;
+        }
+
+        // Processing custom control signals for graceful loop exits
+        if (strcmp(header.command, "EXIT") == 0) {
+            printf("[PROTOCOL LOG] Client cleanly terminated the stream transmission loop.\n\n");
+            break;
+        }
+
+        // Evaluating whether the payload length fields before reading data out of network channels.
+        if (header.payload_length < 0 || header.payload_length >= BUFFER_SIZE) {
+            printf("||SECURITY BLOCKED|| Malicious payload boundary detected: %d bytes!\n\n", header.payload_length);
+            break;
+        }
+
+        /*
+            Protocol Execution - Step B: Extracting the verified payload length string data.
+            Pulls precisely the number of bytes specified by the incoming packet header validation check.
+        */
+        int bytes_read = read(client_socket, buffer, header.payload_length);
+        if (bytes_read < 0) {
+            perror("Couldn't read bytes from socket stream!");
+            break;
+        } else {
+            buffer[bytes_read] = '\0'; // Null terminator prevents overflow bugss
+            printf("[PROTOCOL EXECUTION] Command Type: '%s'\n", header.command);
+            printf("Client communicates: \"%s\"\n\n", buffer);
+
+            // Sending confirmation back to the client to complete 2-way communication exchange
+            send(client_socket, ack_message, strlen(ack_message), 0);
+        }
+    }
+
+    // Closing down the individual client channel when its loop breaks
+    printf("Freeing client network channel! \n\n");
+    close(client_socket);
+    return NULL;
+}
+
 int main(){
     
     struct sockaddr_in address; // Used sockaddr_in because it's specifically designed for handling IPV4
@@ -24,7 +81,6 @@ int main(){
     int client_socket; // File descriptor tracking nearly spawned socket for a connected client
     int opt = 1;
     socklen_t addrlen = sizeof(address); 
-    char buffer[BUFFER_SIZE] = {0}; // Array buffer to read incoming network information
 
     printf("1. Initializing Server Network....\n\n");
 
@@ -80,68 +136,40 @@ int main(){
     }
     printf("Awaiting incoming connections (Listening state)....\n\n");
 
-    /*
-    Accepting incoming client sync requests
-    accept() is woken up the instant a client attempts connection-> extracts the client information
-    and spawns a unique file descriptor (client_socket) for it.
-     */
-
-    client_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen);
-    if (client_socket < 0) {
-        perror("Client connection failed!");
-        close(server_fd);
-        exit(EXIT_FAILURE);
-    }
-    printf("Remote client connected accepted! (Client FD: %d)\n\n", client_socket);
-
-    // Persistent Loop
+    // Continuous master loop running to accept multiple incoming client connections
     while (true) {
-        PacketHeader header;
-        
-        // Extracting the fixed-size packet header struct.
-        int bytes_header = read(client_socket, &header, sizeof(PacketHeader));
-        
-        // Intercepting network dropouts or broken socket descriptors instantly
-        if (bytes_header <= 0) {
-            printf("[NETWORK LOG] Connection dropped out or closed by client device.\n\n");
-            break;
-        }
-
-        // Processing custom control signals for graceful loop exits
-        if (strcmp(header.command, "EXIT") == 0) {
-            printf("[PROTOCOL LOG] Client cleanly terminated the stream transmission loop.\n\n");
-            break;
-        }
-
-        // Evaluating whether the payload length fields before reading data out of network channels.
-        if (header.payload_length < 0 || header.payload_length >= BUFFER_SIZE) {
-            printf("||SECURITY BLOCKED|| Malicious payload boundary detected: %d bytes!\n\n", header.payload_length);
-            break;
-        }
-
         /*
-            Protocol Execution - Step B: Extracting the verified payload length string data.
-            Pulls precisely the number of bytes specified by the incoming packet header validation check.
-        */
-        int bytes_read = read(client_socket, buffer, header.payload_length);
-        if (bytes_read < 0) {
-            perror("Couldn't read bytes from socket stream!");
-            break;
+        Accepting incoming client sync requests
+        accept() is woken up the instant a client attempts connection-> extracts the client information
+        and spawns a unique file descriptor (client_socket) for it.
+         */
+        client_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen);
+        if (client_socket < 0) {
+            perror("Client connection failed!");
+            continue; // Keep the loop going so one failed connection doesn't crash the server
+        }
+        printf("Remote client connected accepted! (Client FD: %d)\n\n", client_socket);
+
+        // Allocating dynamic memory to copy the socket ID safely for the new thread
+        int* worker_sock = malloc(sizeof(int));
+        *worker_sock = client_socket;
+
+        pthread_t thread_id;
+        // Spawning background thread to run the client handler function loops
+        if (pthread_create(&thread_id, NULL, client_handler, (void*)worker_sock) != 0) {
+            perror("Thread engine spawn failed!");
+            free(worker_sock);
+            close(client_socket);
         } else {
-            buffer[bytes_read] = '\0'; // Null terminator prevents overflow bugss
-            printf("[PROTOCOL EXECUTION] Command Type: '%s'\n", header.command);
-            printf("Client communicates: \"%s\"\n\n", buffer);
+            // Detaching thread so its system resources are cleared automatically on exit
+            pthread_detach(thread_id);
         }
     }
 
     /*
         Resource Management: Closing down operational channels to avoid resource leakage
     */
-
-    printf("Freeing network channels! \n\n");
-    close(client_socket);
     close(server_fd);
-
     printf("Server successfully shut down! \n\n");
 
     return 0;
