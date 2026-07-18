@@ -9,6 +9,7 @@
 
 #define PORT 4000
 #define BUFFER_SIZE 512 // Match the server buffer capacity for localized input pooling
+#define XOR_KEY 0x5A    // Secret key for XOR encryption
 
 // Custom protocol structural packet header used for framing data and validation checks
 typedef struct {
@@ -16,6 +17,13 @@ typedef struct {
     int payload_length;    // Data validation parameter to prevent buffer overflows
     char session_token[32];// Cryptographic tracking identifier to isolate sessions
 } PacketHeader;
+
+// Function to encrypt or decrypt data using XOR
+void custom_crypt(char *data, int length) {
+    for (int i = 0; i < length; i++) {
+        data[i] ^= XOR_KEY;
+    }
+}
 
 int main(){
     int sock_fd = 0; // File Descriptor tracking local client socket channel
@@ -62,6 +70,44 @@ int main(){
     }
     printf("Communication pipeline successfully setup between server and client \n\n");
 
+    // Ask user for the secure password
+    printf("Enter secure jail access password: ");
+    scanf(" %[^\n]", message);
+
+    // Build the authentication header packet
+    PacketHeader auth_header;
+    strcpy(auth_header.command, "AUTH");
+    auth_header.payload_length = strlen(message);
+    strcpy(auth_header.session_token, "INIT_TOKEN");
+
+    // Encrypt the password before sending
+    custom_crypt(message, auth_header.payload_length);
+
+    // Send the authentication packet with crash protection flags
+    if (send(sock_fd, &auth_header, sizeof(PacketHeader), MSG_NOSIGNAL) < 0 || 
+        send(sock_fd, message, auth_header.payload_length, MSG_NOSIGNAL) < 0) {
+        printf("[NETWORK ERROR] Failed to connect to security endpoint!\n\n");
+        close(sock_fd);
+        return 0;
+    }
+
+    // Read server response for authentication status
+    int auth_bytes = read(sock_fd, server_reply, BUFFER_SIZE - 1);
+    if (auth_bytes <= 0) {
+        printf("[NETWORK ERROR] Server broke connection during authentication phase.\n\n");
+        close(sock_fd);
+        return 0;
+    }
+    server_reply[auth_bytes] = '\0';
+
+    // Verify if password was accepted
+    if (strcmp(server_reply, "AUTH_SUCCESS") != 0) {
+        printf("[SECURITY EXCLUSION] Access Denied! Incorrect passphrase string.\n\n");
+        close(sock_fd);
+        return 0;
+    }
+    printf("[SECURITY ACCESS] Authentication verified! Entering dynamic communication state.\n\n");
+
     // Persistent Loop
     while (true) {
         printf("Enter message to transmit (or type 'exit'): ");
@@ -83,6 +129,9 @@ int main(){
         // Configure standard dynamic message transport protocol variables
         strcpy(header.command, "MSG");
         header.payload_length = strlen(message);
+
+        // Encrypt the message body before sending it over the network
+        custom_crypt(message, header.payload_length);
 
         printf("Transmitting raw  data bytes payload down the pipeline...\n\n");
         

@@ -5,24 +5,32 @@
 #include <stdbool.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <pthread.h> // Thread library for running multiple clients at the same time
+#include <pthread.h> // Thread library to handle multiple clients together
 
 #define PORT 4000
 #define BUFFER_SIZE 512 //setting the buffer size for incoming messages
+#define XOR_KEY 0x5A    // Secret key for XOR encryption
 
 // Custom protocol structural packet header used for framing data and validation checks
 typedef struct {
     char command[8];       // Directives: "AUTH", "MSG", or "EXIT"
-    int payload_length;    // Data validation parameter to prevent buffer overflows
+    int payload_length;    // Preventing buffer overflows
     char session_token[32];// Cryptographic tracking identifier to isolate sessions
 } PacketHeader;
 
-// Background worker function to handle each client interaction loop individually
+// Function to encrypt or decrypt data using XOR
+void custom_crypt(char *data, int length) {
+    for (int i = 0; i < length; i++) {
+        data[i] ^= XOR_KEY;
+    }
+}
+
+// Function to handle each client loop in a separate thread
 void* client_handler(void* socket_desc) {
     int client_socket = *(int*)socket_desc;
-    free(socket_desc); // Freeing the allocated socket pointer context safely
-    char buffer[BUFFER_SIZE] = {0}; // Individual buffer tracking this specific thread's data
-    char *ack_message = "SERVER_RECEIVED_OK"; // Response string sent to client
+    free(socket_desc); // Free the socket pointer memory
+    char buffer[BUFFER_SIZE] = {0}; // Local buffer for this client's data
+    bool is_authenticated = false;  // Tracks if the client is authenticated
 
     // Persistent Loop
     while (true) {
@@ -57,12 +65,40 @@ void* client_handler(void* socket_desc) {
         if (bytes_read < 0) {
             perror("Couldn't read bytes from socket stream!");
             break;
-        } else {
-            buffer[bytes_read] = '\0'; // Null terminator prevents overflow bugss
+        } 
+        
+        buffer[bytes_read] = '\0'; // Null terminator prevents overflow bugss
+
+        // Secure Authentication Jail Layer
+        if (!is_authenticated) {
+            if (strcmp(header.command, "AUTH") == 0) {
+                custom_crypt(buffer, bytes_read); // Decrypt the password
+                
+                if (strcmp(buffer, "password") == 0) { // Manual password set
+                    is_authenticated = true;
+                    char *auth_ok = "AUTH_SUCCESS";
+                    send(client_socket, auth_ok, strlen(auth_ok), MSG_NOSIGNAL);
+                    printf("[SECURITY LOG] Client successfully authenticated and passed jail gates.\n\n");
+                    continue;
+                }
+            }
+            
+            // Boot the client instantly if it sends a message without proper authentication credentials
+            char *auth_fail = "AUTH_FAILED";
+            send(client_socket, auth_fail, strlen(auth_fail), MSG_NOSIGNAL);
+            printf("[SECURITY ALERT] Client failed authentication check! Dropping channel connection.\n\n");
+            break;
+        }
+
+        // Standard message execution path after passing authentication boundaries
+        if (strcmp(header.command, "MSG") == 0) {
+            custom_crypt(buffer, bytes_read); // Decrypt the encrypted message back to normal text
+            
             printf("[PROTOCOL EXECUTION] Command Type: '%s'\n", header.command);
             printf("Client communicates: \"%s\"\n\n", buffer);
 
-            // Sending confirmation using MSG_NOSIGNAL so the server doesn't crash if the client disconnects mid-stream
+            // Send confirmation back using MSG_NOSIGNAL so server doesn't crash if client leaves
+            char *ack_message = "SERVER_RECEIVED_OK";
             if (send(client_socket, ack_message, strlen(ack_message), MSG_NOSIGNAL) < 0) {
                 printf("[NETWORK LOG] Failed to transmit acknowledgment frame.\n\n");
                 break;
@@ -139,7 +175,7 @@ int main(){
     }
     printf("Awaiting incoming connections (Listening state)....\n\n");
 
-    // Continuous master loop running to accept multiple incoming client connections
+    // Loop forever to accept new clients
     while (true) {
         /*
         Accepting incoming client sync requests
@@ -153,18 +189,18 @@ int main(){
         }
         printf("Remote client connected accepted! (Client FD: %d)\n\n", client_socket);
 
-        // Allocating dynamic memory to copy the socket ID safely for the new thread
+        // Allocate memory for the socket ID to pass it to the thread
         int* worker_sock = malloc(sizeof(int));
         *worker_sock = client_socket;
 
         pthread_t thread_id;
-        // Spawning background thread to run the client handler function loops
+        // Create a thread to run the client handler
         if (pthread_create(&thread_id, NULL, client_handler, (void*)worker_sock) != 0) {
             perror("Thread engine spawn failed!");
             free(worker_sock);
             close(client_socket);
         } else {
-            // Detaching thread so its system resources are cleared automatically on exit
+            // Detach thread to clean up resources automatically when done
             pthread_detach(thread_id);
         }
     }
