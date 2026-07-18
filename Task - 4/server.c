@@ -9,6 +9,13 @@
 #define PORT 4000
 #define BUFFER_SIZE 512 //setting the buffer size for incoming messages
 
+// Custom protocol structural packet header used for framing data and validation checks
+typedef struct {
+    char command[8];       // Directives: "AUTH", "MSG", or "EXIT"
+    int payload_length;    // Data validation parameter to prevent buffer overflows
+    char session_token[32];// Cryptographic tracking identifier to isolate sessions
+} PacketHeader;
+
 int main(){
     
     struct sockaddr_in address; // Used sockaddr_in because it's specifically designed for handling IPV4
@@ -88,14 +95,42 @@ int main(){
     printf("Remote client connected accepted! (Client FD: %d)\n\n", client_socket);
 
     /*
-        Extracting data sent over the channel
-        read() pulls incoming raw bytes directly out of client socket's kernel receiving buffer.
+        Protocol Execution - Step A: Extracting the fixed-size packet header struct.
+        Forces the kernel to read exactly enough bytes to populate PacketHeader variables 
+        before pulling the actual message text body.
     */
-    int bytes_read = read(client_socket, buffer, BUFFER_SIZE - 1);
+    PacketHeader header;
+    int bytes_header = read(client_socket, &header, sizeof(PacketHeader));
+    if (bytes_header < 0) {
+        perror("Failed to read protocol header from stream!");
+        close(client_socket);
+        close(server_fd);
+        exit(EXIT_FAILURE);
+    }
+
+    /*
+        Data Validation Boundary Layer:
+        Evaluating payload length fields before reading data out of network channels.
+        If incoming size parameters exceed BUFFER_SIZE or go below 0, it terminates 
+        immediately to avoid out of bounds array manipulation/buffer injection overflows.
+    */
+    if (header.payload_length < 0 || header.payload_length >= BUFFER_SIZE) {
+        printf("||SECURITY BLOCKED|| Malicious payload boundary detected: %d bytes!\n\n", header.payload_length);
+        close(client_socket);
+        close(server_fd);
+        exit(EXIT_FAILURE);
+    }
+
+    /*
+        Protocol Execution - Step B: Extracting the verified payload length string data.
+        Pulls precisely the number of bytes specified by the incoming packet header validation check.
+    */
+    int bytes_read = read(client_socket, buffer, header.payload_length);
     if (bytes_read < 0) {
         perror("Couldn't read bytes from socket stream!");
     } else {
         buffer[bytes_read] = '\0'; // Null terminator prevents overflow bugss
+        printf("[PROTOCOL EXECUTION] Command Type: '%s'\n", header.command);
         printf("Client communicates: \"%s\"\n\n", buffer);
     }
 
