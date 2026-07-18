@@ -75,7 +75,8 @@ int main(){
             strcpy(header.command, "EXIT");
             header.payload_length = 0;
             
-            send(sock_fd, &header, sizeof(PacketHeader), 0);
+            // Transmitting using MSG_NOSIGNAL to prevent client from crashing if server drops during exit request
+            send(sock_fd, &header, sizeof(PacketHeader), MSG_NOSIGNAL);
             break;
         }
 

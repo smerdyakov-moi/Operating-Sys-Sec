@@ -62,8 +62,11 @@ void* client_handler(void* socket_desc) {
             printf("[PROTOCOL EXECUTION] Command Type: '%s'\n", header.command);
             printf("Client communicates: \"%s\"\n\n", buffer);
 
-            // Sending confirmation back to the client to complete 2-way communication exchange
-            send(client_socket, ack_message, strlen(ack_message), 0);
+            // Sending confirmation using MSG_NOSIGNAL so the server doesn't crash if the client disconnects mid-stream
+            if (send(client_socket, ack_message, strlen(ack_message), MSG_NOSIGNAL) < 0) {
+                printf("[NETWORK LOG] Failed to transmit acknowledgment frame.\n\n");
+                break;
+            }
         }
     }
 
