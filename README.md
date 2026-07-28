@@ -1,4 +1,72 @@
-# Task 3 - Memory Management Simulation
+# Process Management and Threading — Air-Traffic Runway Simulation
+
+A set of C programs demonstrating process creation, thread management, and
+synchronization using a shared scenario: three flights (5, 11, 19) landing on
+a shared runway/taxiway.
+
+## Files
+
+| File | Demonstrates |
+|---|---|
+| `landingwithoutsync.c` | Race condition (no lock on shared state) |
+| `landingwithsync.c` | Fix using a mutex (critical section) |
+| `roundrobin.c` | Round-robin CPU scheduling simulation |
+| `deadlock.c` | Deadlock via circular wait (two locks, reversed order) |
+| `deadlockprevention.c` | Deadlock prevention via fixed lock ordering |
+| `finalprogram.c` | Integrated program: round-robin descent + deadlock-free landing |
+
+## Requirements
+
+- GCC
+- POSIX threads (`pthread`)
+- Linux/macOS (uses `fork()`)
+
+## Build
+
+```bash
+gcc  landingwithoutsync.c   -o landingwithoutsync
+gcc  landingwithsync.c      -o landingwithsync
+gcc  roundrobin.c           -o roundrobin
+gcc  deadlock.c             -o deadlock
+gcc  deadlockprevention.c   -o deadlockprevention
+gcc  finalprogram.c         -o finalprogram
+```
+
+## Run
+
+```bash
+./landingwithoutsync
+./landingwithsync
+./roundrobin
+./deadlockprevention
+./finalprogram
+```
+
+> **Note:** `./deadlock` will hang intentionally (it demonstrates a real
+> deadlock via circular wait). Press `Ctrl+C` to stop it.
+
+## Project Structure
+
+Each program follows the same base pattern:
+
+1. `main()` calls `fork()` to create a child process.
+2. The child process spawns 3 threads (`pthread_create`), one per flight.
+3. The child waits for all threads to finish (`pthread_join`).
+4. The parent waits for the child (`wait`).
+
+Shared resources (runway/taxiway locks, scheduler turn) are protected with
+`pthread_mutex_t` where synchronization is required.
+
+## Screenshots
+| Image| What it demonstrates |
+|---|---|
+| `deadlock.png` | Deadlock Terminal Hang |
+| `deadlockprevention.png` | Fix to deadlock |
+| `landingwithoutsync.png` | Airplane Collision |
+| `landingwithsync.png` | Synchronized landing |
+| `roundrobin.png` | Round Robin Simulation |
+
+# Task 2 - Memory Management Simulation
 
 A small C project that simulates paging in a virtual memory system: address
 translation, page hits/faults, and two page replacement algorithms
@@ -77,7 +145,7 @@ because it correctly protects a page that was reused shortly before an
 eviction was forced — something FIFO has no way to notice.
 
 ## Screenshots
-| Image                     | What it illustrates                                                       |
+| Image                     | What it demonstrates                                                      |
 |---------------------------|---------------------------------------------------------------------------|
 | `fifo1.png` & `fifo2.png` | Demonstrates base simulation of FIFO                                      |
 | `fifovslru-fifo1.png`     | Case 1: FIFO Working                                                      |
@@ -171,7 +239,7 @@ Expected server output:
 ```
 
 ## Screenshots
-|    Image                  | What it visualizes                                                         |
+|    Image                  | What it demonstrates                                                       |
 |---------------------------|----------------------------------------------------------------------------|
 | `authorization.png`       | Authorization (password) validation                                        |
 | `clientservercommunication.png` | Simple client-server communication                                   |
