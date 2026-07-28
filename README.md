@@ -1,4 +1,4 @@
-# Memory Management Simulation
+# Task 3 - Memory Management Simulation
 
 A small C project that simulates paging in a virtual memory system: address
 translation, page hits/faults, and two page replacement algorithms
@@ -78,6 +78,7 @@ eviction was forced — something FIFO has no way to notice.
 
 ## Screenshots
 | Image                     | What it illustrates                                                       |
+|---------------------------|---------------------------------------------------------------------------|
 | `fifo1.png` & `fifo2.png` | Demonstrates base simulation of FIFO                                      |
 | `fifovslru-fifo1.png`     | Case 1: FIFO Working                                                      |
 | `fifovslru-lru1.png`      | Case 1: LRU Working                                                       |
@@ -171,6 +172,7 @@ Expected server output:
 
 ## Screenshots
 |    Image                  | What it visualizes                                                         |
+|---------------------------|----------------------------------------------------------------------------|
 | `authorization.png`       | Authorization (password) validation                                        |
 | `clientservercommunication.png` | Simple client-server communication                                   |
 | `handlingservershutdown.png` | Server Shutdown Handling                                                |
@@ -178,9 +180,6 @@ Expected server output:
 | `multiclientcomms.png`    | Concurrent Client Messaging                                                |
 | `persistentcomms.png`     | Persistent Communication                                                   | I
 
-## Notes
+## Note
 
 - Password is hardcoded server-side (`"password"`) for demonstration purposes only.
-- XOR encryption and the fixed credential are simplified stand-ins for
-  TLS and a real credential store, sufficient to demonstrate the required
-  security-measure concept at the protocol level for this assignment.
