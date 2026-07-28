@@ -1,4 +1,5 @@
-# Process Management and Threading — Air-Traffic Runway Simulation
+# Process Management and Threading
+
 
 A set of C programs demonstrating process creation, thread management, and
 synchronization using a shared scenario: three flights (5, 11, 19) landing on
