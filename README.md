@@ -1,4 +1,4 @@
-# Libraries & Headers Used, by Task
+# Libraries & Headers Used by Task
 
 Inferred from the implementation details, system calls, and APIs described in `OS.docx`.
 
