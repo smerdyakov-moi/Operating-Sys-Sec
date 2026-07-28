@@ -1,3 +1,57 @@
+# Libraries & Headers Used, by Task
+
+Inferred from the implementation details, system calls, and APIs described in `OS.docx`.
+
+## Task 1 — Process Management and Threading (Air-Traffic Runway Sim)
+
+| Library / Header | Purpose in this task |
+|---|---|
+| `<pthread.h>` | `pthread_create()`, `pthread_join()`, `pthread_mutex_t`, `pthread_mutex_lock()`/`unlock()` — threading and mutex synchronization for the flight threads and round-robin `turn_lock` |
+| `<unistd.h>` | `fork()`, `sleep()` — process creation and the deliberate delays used to make race conditions and deadlocks reproducible |
+| `<sys/wait.h>` | `wait()` — parent process blocking on the forked child |
+| `<stdio.h>` | Console/terminal logging output shown in all terminal-log figures |
+| `<stdlib.h>` | General process/utility support (exit codes, standard allocation) |
+
+**Link flag:** `-lpthread` (or `-pthread`) required at compile time for POSIX threads.
+
+## Task 2 — Memory Management Simulation
+
+| Library / Header | Purpose in this task |
+|---|---|
+| `<stdio.h>` | Printing address translation, page hit/fault traces, and comparative FIFO/LRU logs |
+| `<stdint.h>` | Fixed-width integer types for virtual/physical address arithmetic (bitwise decomposition into page number/offset) |
+| `<stdlib.h>` | Array/memory management for `physical_frames[]`, `last_time_used[]`, etc. |
+
+No third-party or POSIX-specific libraries are required — this task is implemented with standard C only, since it is a single-threaded simulation of address translation and page replacement (FIFO/LRU).
+
+## Task 3 — File System Operations and Security (Virtual OS)
+
+| Library / Header | Purpose in this task |
+|---|---|
+| `<stdio.h>` | Command-line interface, `audit.log` file writes |
+| `<string.h>` | `strcmp()` for login credential comparison; string handling for usernames, filenames, and permissions |
+| `<stdlib.h>` | Management of the in-memory `users[]` and `VirtualFile files[MAX_FILES]` arrays |
+| `<time.h>` | Timestamps recorded in each `audit.log` entry |
+
+This task is single-process/in-memory (no threading library needed); its only disk I/O is the append-only `audit.log` file.
+
+## Task 4 — Network Programming and IPC
+
+| Library / Header | Purpose in this task |
+|---|---|
+| `<sys/socket.h>` | Core socket API — `socket()`, `bind()`, `listen()`, `accept()`, `connect()`, `send()`/`recv()` for the TCP client-server protocol |
+| `<netinet/in.h>` | `sockaddr_in`, port/address structures for binding to TCP port 4000 |
+| `<arpa/inet.h>` | Address conversion utilities (e.g., `inet_pton()`/`inet_ntoa()`) for client-server addressing |
+| `<pthread.h>` | `pthread_create()` for spawning a detached thread per connected client; `pthread_detach()` for automatic resource reclamation |
+| `<unistd.h>` | `read()`/`write()`/`close()` on socket file descriptors |
+| `<string.h>` | Packet payload handling, `custom_crypt()` XOR routine over message buffers |
+| `<stdio.h>` | Client/server console output and error logging |
+
+**Link flag:** `-lpthread` required for the multi-threaded server (`gcc server.c -o s1 -lpthread`).
+
+---
+
+
 # Task 1 - Process Management and Threading
 
 
@@ -156,6 +210,65 @@ eviction was forced — something FIFO has no way to notice.
 | `fifovslru3.png`          | Case 3: Belady's Anomaly                                                  |
 | `simulation1.png` & `simulation2.png`      | No Pg. Replacement Algorithm                             |                                     
 
+
+# Task 3 - Virtual OS — Simple File Management System (C)
+
+A command-line simulation of a small multi-user operating system, built in C. It models user authentication, an owner/group/others file permission scheme, basic file encryption, and audit logging, all backed by in-memory arrays (no real disk I/O).
+
+## Features
+
+- **User authentication** — login/logout with username + password
+- **User management** — root-only account creation and deletion (`adduser`, `removeuser`)
+- **Virtual file system** — create, read, write, and delete files held in memory
+- **Permissions** — owner / group / others read, write, execute flags per file
+- **Encryption** — XOR-based encrypt/decrypt on file contents
+- **Audit logging** — every login, file operation, and permission decision is appended to `audit.log`
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `final.c` | Entry point; command loop and user input handling |
+| `auth.c` / `auth.h` | Login, logout, session state |
+| `users.c` / `users.h` | Account creation/deletion (root-only) |
+| `filesystem.c` / `filesystem.h` | File create/read/write/delete, permissions, encryption |
+| `audit.c` / `audit.h` | Append-only action logging to `audit.log` |
+| `globals.c` / `globals.h` | Shared structs, constants, and global state |
+
+## Build
+
+```bash
+gcc -o virtualos final.c auth.c users.c filesystem.c audit.c globals.c
+```
+
+## Run
+
+```bash
+./virtualos
+```
+
+On first launch, a default `root` account is created automatically (see `initialize_system()` in `auth.c`).
+
+## Commands
+
+| Command | Description |
+|---|---|
+| `login` | Log in with a username and password |
+| `logout` | End the current session |
+| `adduser` | Create a new account (root only) |
+| `removeuser` | Delete an account and its files (root only) |
+| `create` | Create a new file with default permissions |
+| `read` | Read a file's contents (permission-checked) |
+| `write` | Overwrite a file's contents (permission-checked) |
+| `delete` | Delete a file (owner or root only) |
+| `encrypt` | XOR-encrypt a file's contents |
+| `dump` | Show raw in-memory file bytes (root only) |
+| `exit` | Shut down the program |
+
+## Notes
+
+- All data is in-memory only — nothing persists between runs except `audit.log`.
+- This project was built for coursework and includes several intentional/discovered security weaknesses (unbounded input reads, plaintext password storage, a weak XOR cipher, and others) — see the accompanying security analysis report for details.
 
 # Task 4 — Network Programming and IPC (TCP Client-Server Chat)
 
