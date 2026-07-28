@@ -1,41 +1,36 @@
 # Libraries & Headers Used by Task
 
-Inferred from the implementation details, system calls, and APIs described in `OS.docx`.
-
-## Task 1 — Process Management and Threading (Air-Traffic Runway Sim)
+## Task 1
 
 | Library / Header | Purpose in this task |
 |---|---|
 | `<pthread.h>` | `pthread_create()`, `pthread_join()`, `pthread_mutex_t`, `pthread_mutex_lock()`/`unlock()` — threading and mutex synchronization for the flight threads and round-robin `turn_lock` |
 | `<unistd.h>` | `fork()`, `sleep()` — process creation and the deliberate delays used to make race conditions and deadlocks reproducible |
 | `<sys/wait.h>` | `wait()` — parent process blocking on the forked child |
-| `<stdio.h>` | Console/terminal logging output shown in all terminal-log figures |
 | `<stdlib.h>` | General process/utility support (exit codes, standard allocation) |
 
 **Link flag:** `-lpthread` (or `-pthread`) required at compile time for POSIX threads.
 
-## Task 2 — Memory Management Simulation
+## Task 2
 
 | Library / Header | Purpose in this task |
 |---|---|
-| `<stdio.h>` | Printing address translation, page hit/fault traces, and comparative FIFO/LRU logs |
 | `<stdint.h>` | Fixed-width integer types for virtual/physical address arithmetic (bitwise decomposition into page number/offset) |
 | `<stdlib.h>` | Array/memory management for `physical_frames[]`, `last_time_used[]`, etc. |
 
 No third-party or POSIX-specific libraries are required — this task is implemented with standard C only, since it is a single-threaded simulation of address translation and page replacement (FIFO/LRU).
 
-## Task 3 — File System Operations and Security (Virtual OS)
+## Task 3
 
 | Library / Header | Purpose in this task |
 |---|---|
-| `<stdio.h>` | Command-line interface, `audit.log` file writes |
 | `<string.h>` | `strcmp()` for login credential comparison; string handling for usernames, filenames, and permissions |
 | `<stdlib.h>` | Management of the in-memory `users[]` and `VirtualFile files[MAX_FILES]` arrays |
 | `<time.h>` | Timestamps recorded in each `audit.log` entry |
 
 This task is single-process/in-memory (no threading library needed); its only disk I/O is the append-only `audit.log` file.
 
-## Task 4 — Network Programming and IPC
+## Task 4
 
 | Library / Header | Purpose in this task |
 |---|---|
@@ -45,7 +40,6 @@ This task is single-process/in-memory (no threading library needed); its only di
 | `<pthread.h>` | `pthread_create()` for spawning a detached thread per connected client; `pthread_detach()` for automatic resource reclamation |
 | `<unistd.h>` | `read()`/`write()`/`close()` on socket file descriptors |
 | `<string.h>` | Packet payload handling, `custom_crypt()` XOR routine over message buffers |
-| `<stdio.h>` | Client/server console output and error logging |
 
 **Link flag:** `-lpthread` required for the multi-threaded server (`gcc server.c -o s1 -lpthread`).
 
